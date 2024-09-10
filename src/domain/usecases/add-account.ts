@@ -1,4 +1,4 @@
-import { AccountModel } from '@src/domain/models';
+import { Account } from '@afirmashop/common-logic';
 
 export type AddAccount = (params: AddAccount.Params) => AddAccount.Response;
 
@@ -9,5 +9,5 @@ export namespace AddAccount {
     email: string;
     password: string;
   };
-  export type Response = Promise<AccountModel>;
+  export type Response = Promise<Account>;
 }

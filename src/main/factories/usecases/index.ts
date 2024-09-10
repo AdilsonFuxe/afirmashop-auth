@@ -38,20 +38,56 @@ import {
 } from '@src/infra/db/mongoose/repositories';
 import { nodeMailerAdapter } from '@src/infra/remote';
 import env from '@src/main/config/env';
+import { sendEventDecorator } from '@src/main/decorators';
+import kafka from '@src/main/decorators/kafka';
 
 export const makeDbAddAccount = (): AddAccount =>
-  dbAddAccount({
-    passwordHash: bcryptHashPasswordHashAdapter(env.salt),
-    addAccountRepository,
-  });
+  sendEventDecorator(
+    dbAddAccount({
+      passwordHash: bcryptHashPasswordHashAdapter(env.salt),
+      addAccountRepository,
+    }),
+    async (req, res) => {
+      const producer = kafka.producer();
+      await producer.connect();
+      await producer.send({
+        topic: 'authentication-events',
+        messages: [
+          {
+            key: `sign-up`,
+            value: JSON.stringify(res),
+          },
+        ],
+      });
+      await producer.disconnect();
+      return res;
+    },
+  );
 
 export const makeDbAuthentication = (): Authentication =>
-  dbAuthentication({
-    passwordHashCompare: bcryptPasswordHashCompareAdapter,
-    encrypt: jwtEncryptAdapter(env.jwtSecret),
-    loadAccountByEmailRepository,
-    updateAccessTokenRepository,
-  });
+  sendEventDecorator(
+    dbAuthentication({
+      passwordHashCompare: bcryptPasswordHashCompareAdapter,
+      encrypt: jwtEncryptAdapter(env.jwtSecret),
+      loadAccountByEmailRepository,
+      updateAccessTokenRepository,
+    }),
+    async (req, res) => {
+      const producer = kafka.producer();
+      await producer.connect();
+      await producer.send({
+        topic: 'authentication-events',
+        messages: [
+          {
+            key: `sign-in`,
+            value: JSON.stringify({ email: req[0].email, accessToken: res }),
+          },
+        ],
+      });
+      await producer.disconnect();
+      return res;
+    },
+  );
 
 export const makeDbForgotPassword = (): ForgotPassword =>
   dbForgotPassword({

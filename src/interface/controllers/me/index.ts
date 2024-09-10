@@ -13,6 +13,7 @@ const buildMeController: BuildMeController =
       firstName: account.firstName,
       lastName: account.lastName,
       email: account.email,
+      roles: account.roles
     });
   };
 
